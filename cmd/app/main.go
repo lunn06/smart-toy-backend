@@ -4,9 +4,9 @@ import (
 	"github.com/lunn06/smart-toy-backend/internal/app"
 )
 
-// @title Video-hosting API
+// @title Smart Toy API
 // @version 0.1
-// @description API Server for video-hosting application
+// @description API Server for Smart Toy
 func main() {
 	app.Run()
 }
