@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lunn06/smart-toy-backend/internal/database"
+	"github.com/lunn06/smart-toy-backend/internal/database/redis"
+	"github.com/lunn06/smart-toy-backend/internal/database/sql"
 	"github.com/lunn06/smart-toy-backend/internal/transport/rest"
 )
 
@@ -23,23 +24,23 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		token, err := database.GetToken(refreshUUID)
+		token, err := redis.GetRefreshToken(refreshUUID)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "INVALID_REFRESH_SESSION: refresh token out of life",
-			})
-		}
-
-		if token.CreationTime.Add(time.Duration(rest.RefreshLife)).Compare(time.Now()) == 1 {
-			slog.Error("AuthMiddleware() error = %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "INVALID_REFRESH_SESSION: refresh token out of life",
 			})
 			return
 		}
 
-		user, err := database.GetUserByRefreshToken(refreshUUID)
-		if user == nil {
+		if token.CreationTime.Add(time.Duration(rest.RefreshLife)).Compare(time.Now()) == 1 {
+			slog.Error("AuthMiddleware() error = refresh token out of life")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "INVALID_REFRESH_SESSION: refresh token out of life",
+			})
+			return
+		}
+
+		if _, err = sql.GetUserById(token.UserId); err != nil {
 			slog.Error("AuthMiddleware() error = %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "INVALID_REFRESH_SESSION: no user with this token",

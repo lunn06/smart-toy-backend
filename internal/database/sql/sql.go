@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lunn06/smart-toy-backend/internal/config"
@@ -17,43 +16,47 @@ var (
 	DB *sqlx.DB
 
 	insertUserRequest = `
-		INSERT INTO users (email, password) VALUES($1, $2) RETURNING id
+		INSERT INTO users (email, password) VALUES(?, ?)
 	`
 
 	insertTokenRequest = `
-		INSERT INTO jwt_tokens (uuid, token) VALUES ($1, $2) RETURNING uuid
+		INSERT INTO jwt_tokens (uuid, token) VALUES (?, ?)
 	`
 
 	insertUserTokenRequest = `
-		INSERT INTO users_tokens (user_id, token_uuid) VALUES ($1, $2)
+		INSERT INTO users_tokens (user_id, token_uuid) VALUES (?, ?)
 	`
 
 	updateTokenRequest = `
-		UPDATE jwt_tokens SET creation_time=$1 WHERE uuid=$2
+		UPDATE jwt_tokens SET creation_time=? WHERE uuid=?
 	`
 
 	getUserByRefreshTokenRequest = `
 		SELECT * FROM jwt_tokens WHERE uuid=(
-		    SELECT token_uuid FROM users_tokens WHERE user_id=$1
+		    SELECT token_uuid FROM users_tokens WHERE user_id=?
 		)
 	`
 
 	getTokenByUserRequest = `
 		SELECT * FROM users WHERE id=(
-		    SELECT user_id FROM users_tokens WHERE token_uuid=$1
+		    SELECT user_id FROM users_tokens WHERE token_uuid=?
 		)
 	`
 
 	getTokenRequest = `
-		SELECT * FROM jwt_tokens WHERE uuid=$1
+		SELECT * FROM jwt_tokens WHERE uuid=?
 	`
 
 	deleteTokenRequest = `
-		DELETE FROM jwt_tokens WHERE uuid=$1
+		DELETE FROM jwt_tokens WHERE uuid=?
 	`
 
-	getUserRequest = `
-		SELECT * FROM users WHERE email=$1
+	getUserByEmailRequest = `
+		SELECT * FROM users WHERE email=?
+	`
+
+	getUserByIdRequest = `
+		SELECT * FROM users WHERE id=?
 	`
 )
 
@@ -82,10 +85,12 @@ func MustCreate(cfg config.Config) *sqlx.DB {
 	}
 
 	dbConf := mysql.Config{
-		User: cfg.Database.User,
-		Passwd: cfg.Database.Password,
-		Addr: cfg.Database.Address,
-		DBName: cfg.Database.Name,
+		User:      cfg.Database.User,
+		Passwd:    cfg.Database.Password,
+		Net:       "tcp",
+		Addr:      cfg.Database.Address,
+		DBName:    cfg.Database.Name,
+		ParseTime: true,
 	}
 
 	db, err := sqlx.Connect(cfg.Database.Driver, dbConf.FormatDSN())
@@ -107,24 +112,26 @@ func checkDBConnection() error {
 	return nil
 }
 
-func InsertUser(user models.School) (int, error) {
+func InsertUser(user models.User) error {
 	if err := checkDBConnection(); err != nil {
-		return -1, err
+		return err
 	}
 
 	tx := DB.MustBegin()
 
-	var lastInsertIndex int
-	err := tx.QueryRow(insertUserRequest, user.Email, user.Password).Scan(&lastInsertIndex)
+	_, err := tx.NamedExec(insertUserRequest, map[string]any{
+		"email":    user.Email,
+		"password": user.Password,
+	})
 	if err != nil {
-		return -1, err
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return -1, err
+		return err
 	}
 
-	return lastInsertIndex, err
+	return nil
 }
 
 func InsertToken(userId int, jwtToken string) (string, error) {
@@ -133,20 +140,19 @@ func InsertToken(userId int, jwtToken string) (string, error) {
 	}
 	tx := DB.MustBegin()
 
-	var tempUUID string
-	tokenUUID, err := uuid.NewV7()
+	tokenUUIDStruct, err := uuid.NewV7()
+	tokenUUID := tokenUUIDStruct.String()
 
 	if err != nil {
 		return "", err
 	}
 
-	err = tx.QueryRow(insertTokenRequest, tokenUUID, jwtToken).Scan(&tempUUID)
-
+	_, err = tx.Exec(insertTokenRequest, tokenUUID, jwtToken)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = tx.Exec(insertUserTokenRequest, userId, tempUUID)
+	_, err = tx.Exec(insertUserTokenRequest, userId, tokenUUID)
 	if err != nil {
 		return "", err
 	}
@@ -155,7 +161,7 @@ func InsertToken(userId int, jwtToken string) (string, error) {
 		return "", err
 	}
 
-	return tempUUID, err
+	return tokenUUID, err
 }
 
 func UpdateTokenTime(token models.JwtToken) error {
@@ -163,7 +169,7 @@ func UpdateTokenTime(token models.JwtToken) error {
 		return err
 	}
 
-	_, err := DB.Exec(updateTokenRequest, time.Now(), token.Uuid)
+	_, err := DB.Exec(updateTokenRequest, time.Now(), token.UserId) // TODO fix back
 	if err != nil {
 		return err
 	}
@@ -171,7 +177,7 @@ func UpdateTokenTime(token models.JwtToken) error {
 	return nil
 }
 
-func GetTokenByUser(user models.School) (models.JwtToken, error) {
+func GetTokenByUser(user models.User) (models.JwtToken, error) {
 	var token models.JwtToken
 
 	if err := checkDBConnection(); err != nil {
@@ -186,8 +192,8 @@ func GetTokenByUser(user models.School) (models.JwtToken, error) {
 	return token, nil
 }
 
-func GetUserByRefreshToken(tokenUUID string) (models.School, error) {
-	var user models.School
+func GetUserByRefreshToken(tokenUUID string) (models.User, error) {
+	var user models.User
 
 	if err := checkDBConnection(); err != nil {
 		return user, err
@@ -236,14 +242,35 @@ func PopToken(tokenUUID string) (models.JwtToken, error) {
 	return token, nil
 }
 
-func GetUser(email string) (models.School, error) {
-	var user models.School
+func GetUserByEmail(email string) (models.User, error) {
+	var user models.User
 
 	if err := checkDBConnection(); err != nil {
 		return user, err
 	}
 
-	err := DB.Get(&user, getUserRequest, email)
+	rows := DB.QueryRowx(getUserByEmailRequest, email)
+
+	err := rows.Scan(&user.Id, &user.Email, &user.Password, &user.RegistrationTime)
+
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+func GetUserById(userId int) (models.User, error) {
+	var user models.User
+
+	if err := checkDBConnection(); err != nil {
+		return user, err
+	}
+
+	// err := DB.Get(&user, getUserByIdRequest, userId)
+	rows := DB.QueryRowx(getUserByIdRequest, userId)
+
+	err := rows.Scan(&user.Id, &user.Email, &user.Password, &user.RegistrationTime)
 
 	if err != nil {
 		return user, err

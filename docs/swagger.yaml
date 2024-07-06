@@ -3,14 +3,16 @@ definitions:
     properties:
       email:
         type: string
+      fingerprint:
+        type: string
       password:
         type: string
     type: object
   models.RegisterRequest:
     properties:
-      channel_name:
-        type: string
       email:
+        type: string
+      fingerprint:
         type: string
       password:
         type: string
@@ -117,17 +119,4 @@ paths:
       summary: registers a user
       tags:
       - registration
-  /api/auth/upload:
-    post:
-      consumes:
-      - application/json
-      description: accepts file sent by the user as input and upload it
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'message: Uploade was successful'
-      summary: upload a FILE
-      tags:
-      - uploading
 swagger: "2.0"

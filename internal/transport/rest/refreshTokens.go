@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lunn06/smart-toy-backend/internal/database"
+	"github.com/lunn06/smart-toy-backend/internal/config"
+	"github.com/lunn06/smart-toy-backend/internal/database/redis"
+	"github.com/lunn06/smart-toy-backend/internal/database/sql"
+	"github.com/lunn06/smart-toy-backend/internal/models"
 )
 
 // @BasePath /auth/api/
@@ -27,7 +29,8 @@ import (
 // @Failure 500 "error: Invalid to create token"
 // @Router /api/auth/refresh [post]
 func RefreshTokens(c *gin.Context) {
-	refreshUUID, err := c.Cookie("refreshToken")
+	refreshUuid, err := c.Cookie("refreshToken")
+
 	if err != nil {
 		slog.Error(fmt.Sprintf("RefreshToken() error = %v, can't fetch refresh cookies", err))
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -36,7 +39,17 @@ func RefreshTokens(c *gin.Context) {
 		return
 	}
 
-	token, err := database.PopToken(refreshUUID)
+	var body models.RefreshTokensRequest
+
+	if c.Bind(&body) != nil {
+		slog.Error(fmt.Sprintf("RefreshToken() error = %v, can't bind RefreshTokensRequest model", err))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request",
+		})
+		return
+	}
+
+	token, err := redis.PopRefreshToken(refreshUuid)
 	if err != nil {
 		slog.Error(fmt.Sprintf("RefreshToken() error = %v, can't delete or select from db", err))
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -45,16 +58,25 @@ func RefreshTokens(c *gin.Context) {
 		return
 	}
 
-	if token.CreationTime.Add(time.Duration(RefreshLife)).Compare(time.Now()) < 1 {
+	if token.FingerPrint != body.SmartToyFingerPrint {
+		slog.Error(fmt.Sprintf("RefreshToken() error = %v, request and session fingerprints are not equal", err))
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "INVALID_REFRESH_SESSION: refresh token out of life",
+			"error": "ARE YOU HACKER?",
 		})
 		return
+		
 	}
 
-	user, err := database.GetUserByRefreshToken(token.Token)
+	user, err := sql.GetUserById(token.UserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Invalid to get user",
+		})
+		return
 
-	accessToken, refreshToken, err := newTokens(*user)
+	}
+
+	accessToken, err := newTokens(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Invalid to create token",
@@ -62,7 +84,7 @@ func RefreshTokens(c *gin.Context) {
 		return
 	}
 
-	newRefreshUUID, err := database.InsertToken(user.Id, refreshToken)
+	newRefreshUuid, err := redis.InsertRefreshToken(user.Id, body.SmartToyFingerPrint, RefreshLife)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid to insert token",
@@ -72,8 +94,9 @@ func RefreshTokens(c *gin.Context) {
 
 	jwtCookie := http.Cookie{
 		Name:     "refreshToken",
-		Value:    newRefreshUUID,
-		MaxAge:   RefreshLife,
+		Domain:   config.CFG.HTTPServer.Address,
+		Value:    newRefreshUuid,
+		MaxAge:   int(RefreshLife.Seconds()),
 		Path:     "/api/auth",
 		HttpOnly: true,
 	}
@@ -91,6 +114,6 @@ func RefreshTokens(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "RefreshToken was successful",
 		"accessToken":  accessToken,
-		"refreshToken": newRefreshUUID,
+		"refreshToken": newRefreshUuid,
 	})
 }

@@ -1,20 +1,22 @@
 package rest
 
 import (
-	"math/rand"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lunn06/smart-toy-backend/internal/config"
-	"github.com/lunn06/smart-toy-backend/internal/database"
+	"github.com/lunn06/smart-toy-backend/internal/database/redis"
+	"github.com/lunn06/smart-toy-backend/internal/database/sql"
 	"github.com/lunn06/smart-toy-backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	AccessLife  = 60 * 30
-	RefreshLife = 3600 * 24
+	AccessLife  = time.Minute * 30
+	RefreshLife = time.Hour * 24 * 30
 )
 
 // @BasePath /auth/api/
@@ -55,8 +57,9 @@ func Authentication(c *gin.Context) {
 		})
 		return
 	}
-	user, err := database.GetUser(body.Email)
+	user, err := sql.GetUserByEmail(body.Email)
 	if err != nil {
+		slog.Error("Authentication() can't GetUserByEmail()", "error", err)
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "Invalid email or password",
 		})
@@ -70,22 +73,7 @@ func Authentication(c *gin.Context) {
 		return
 	}
 
-	// _, err = database.GetTokenByUser(*user)
-	// if err != nil {
-	// 	// err = database.UpdateTokenTime(*userRefreshToken)
-	// 	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"error": "Server error! Pleas try again later",
-	// 	})
-	// 	return
-	// 	// }
-
-	// 	// c.JSON(http.StatusOK, gin.H{
-	// 		// "message": "Authentication was successful",
-	// 	// })
-	// }
-
-	accessToken, refreshToken, err := newTokens(*user)
+	accessToken, err := newTokens(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Invalid to create token",
@@ -93,7 +81,7 @@ func Authentication(c *gin.Context) {
 		return
 	}
 
-	refreshUUID, err := database.InsertToken(user.Id, refreshToken)
+	refreshUuid, err := redis.InsertRefreshToken(user.Id, body.SmartToyFingerPrint, RefreshLife)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid to insert token",
@@ -103,8 +91,9 @@ func Authentication(c *gin.Context) {
 
 	jwtCookie := http.Cookie{
 		Name:     "refreshToken",
-		Value:    refreshUUID,
-		MaxAge:   RefreshLife,
+		Domain:   config.CFG.HTTPServer.Address,
+		Value:    refreshUuid,
+		MaxAge:   int(RefreshLife.Seconds()),
 		Path:     "/api/auth",
 		HttpOnly: true,
 	}
@@ -122,34 +111,24 @@ func Authentication(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Authentication was successful",
 		"accessToken":  accessToken,
-		"refreshToken": refreshUUID,
+		"refreshToken": refreshUuid,
 	})
 }
 
-func newTokens(user models.User) (string, string, error) {
+func newTokens(school models.User) (string, error) {
 	var jwtSecretKey = []byte(config.CFG.JWTSecretKey)
 
 	accessPayload := jwt.MapClaims{
-		"email": user.Email,
+		"sub":   school.Id,
+		"email": school.Email,
 		"exp":   AccessLife,
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessPayload)
 	signedAccessToken, err := accessToken.SignedString(jwtSecretKey)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	refreshPayload := jwt.MapClaims{
-		"sub": rand.Int(),
-		"exp": RefreshLife,
-	}
-
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshPayload)
-	signedRefreshToken, err := refreshToken.SignedString(jwtSecretKey)
-	if err != nil {
-		return "", "", err
-	}
-
-	return signedAccessToken, signedRefreshToken, nil
+	return signedAccessToken, nil
 }

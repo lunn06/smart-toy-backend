@@ -160,26 +160,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/api/auth/upload": {
-            "post": {
-                "description": "accepts file sent by the user as input and upload it",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "uploading"
-                ],
-                "summary": "upload a FILE",
-                "responses": {
-                    "200": {
-                        "description": "message: Uploade was successful"
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -187,6 +167,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "fingerprint": {
                     "type": "string"
                 },
                 "password": {
@@ -197,10 +180,10 @@ const docTemplate = `{
         "models.RegisterRequest": {
             "type": "object",
             "properties": {
-                "channel_name": {
+                "email": {
                     "type": "string"
                 },
-                "email": {
+                "fingerprint": {
                     "type": "string"
                 },
                 "password": {

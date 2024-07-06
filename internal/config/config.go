@@ -11,7 +11,8 @@ var CFG Config
 
 type Config struct {
 	HTTPServer   `yaml:"http_server"`
-	Database     `yaml:"database"` 
+	Database     `yaml:"database"`
+	Redis        `yaml:"redis"`
 	JWTSecretKey string `yaml:"jwt_secret_key"`
 }
 
@@ -21,11 +22,18 @@ type HTTPServer struct {
 }
 
 type Database struct {
+	Driver   string `yaml:"driver"`
 	Address  string `yaml:"address"`
 	User     string `yaml:"user"`
 	Name     string `yaml:"name"`
 	Password string `yaml:"password"`
 	SSLMode  string `yaml:"ssl_mode"`
+}
+
+type Redis struct {
+	Address  string `yaml:"address"`
+	Password string `yaml:"password"`
+	Database int    `yaml:"database"`
 }
 
 func Init() {

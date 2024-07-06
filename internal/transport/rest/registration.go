@@ -1,10 +1,11 @@
 package rest
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lunn06/smart-toy-backend/internal/database"
+	"github.com/lunn06/smart-toy-backend/internal/database/sql"
 	"github.com/lunn06/smart-toy-backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,12 +42,6 @@ func Registration(c *gin.Context) {
 		})
 		return
 	}
-	if len(body.ChannelName) > 255 || body.ChannelName == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "Failed create channel_name, because it exceeds the character limit or backwards",
-		})
-		return
-	}
 	if len(body.Password) > 72 || body.Password == "" {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"error": "Failed create password, because it exceeds the character limit or backwards",
@@ -61,11 +56,11 @@ func Registration(c *gin.Context) {
 		return
 	}
 	user := models.User{
-		Email:       body.Email,
-		ChannelName: body.ChannelName,
-		Password:    string(hash),
+		Email:    body.Email,
+		Password: string(hash),
 	}
-	_, err = database.InsertUser(user)
+	err = sql.InsertUser(user)
+	slog.Error("Registration() error = %v, can't insert user", err)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{
 			"error": "email or channel already been use",
@@ -81,7 +76,7 @@ func Registration(c *gin.Context) {
 	// 	return
 	// }
 
-	// refreshUUID, err := database.InsertToken(userID, refreshToken)
+	// refreshUUID, err := sql.InsertToken(userID, refreshToken)
 	// if err != nil {
 	// 	c.JSON(http.StatusBadRequest, gin.H{
 	// 		"error": "Invalid to insert token",
