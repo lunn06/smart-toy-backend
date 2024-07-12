@@ -25,7 +25,8 @@ import (
 // @Router /api/auth/logout [delete]
 func Logout(c *gin.Context) {
 	body := requests.LogoutRequest{}
-	if c.Bind(&body) != nil {
+	if err := c.Bind(&body); err != nil {
+		slog.Error("Logout() can't PopRefreshToken", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to read body",
 		})
