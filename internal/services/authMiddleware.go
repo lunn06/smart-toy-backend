@@ -17,7 +17,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		refreshUUID, err := c.Cookie("refreshToken")
 
 		if err != nil {
-			slog.Error("AuthMiddleware() error = %v", err)
+			slog.Error("AuthMiddleware() can't get refreshToken cookie", "error", err)
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"error": fmt.Sprintf("AuthMiddleware() error = %v", err),
 			})
@@ -41,7 +41,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		if _, err = sql.GetUserById(token.UserId); err != nil {
-			slog.Error("AuthMiddleware() error = %v", err)
+			slog.Error("AuthMiddleware() can't GetUserById", "error", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "INVALID_REFRESH_SESSION: no user with this token",
 			})

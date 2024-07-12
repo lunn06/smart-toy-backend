@@ -1,4 +1,4 @@
-package models
+package requests
 
 // RefreshTokensRequest swagger::model
 type RefreshTokensRequest struct {

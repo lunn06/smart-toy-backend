@@ -9,19 +9,18 @@ import (
 	"github.com/lunn06/smart-toy-backend/internal/config"
 	"github.com/lunn06/smart-toy-backend/internal/database/redis"
 	"github.com/lunn06/smart-toy-backend/internal/database/sql"
-	"github.com/lunn06/smart-toy-backend/internal/models"
+	"github.com/lunn06/smart-toy-backend/internal/models/requests"
 )
 
-// @BasePath /auth/api/
+// @BasePath /api/auth/
 
 // RefreshTokens godoc
 // @Summary refresh user's tokens
 // @Schemes application/json
-// @Description accept json and refresh user refresh and access tokens
+// @Description accept json and refresh user tokens
 // @Tags authorization
 // @Accept json
 // @Produce json
-// @Param input body models.LoginRequest true "account info"
 // @Success 200 "message: RefreshTokens was successful"
 // @Failure 401 "error: Invalid to get refresh token from cookie"
 // @Failure 500 "error: Invalid to pop token"
@@ -39,7 +38,7 @@ func RefreshTokens(c *gin.Context) {
 		return
 	}
 
-	var body models.RefreshTokensRequest
+	var body requests.RefreshTokensRequest
 
 	if c.Bind(&body) != nil {
 		slog.Error(fmt.Sprintf("RefreshToken() error = %v, can't bind RefreshTokensRequest model", err))

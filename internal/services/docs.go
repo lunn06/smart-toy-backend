@@ -8,7 +8,7 @@ import (
 )
 
 func SetupDocs(r *gin.Engine) {
-	docs.SwaggerInfo.BasePath = "/"
+	docs.SwaggerInfo.BasePath = "/api/"
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 }

@@ -14,6 +14,7 @@ type Config struct {
 	Database     `yaml:"database"`
 	Redis        `yaml:"redis"`
 	JWTSecretKey string `yaml:"jwt_secret_key"`
+	UploadDir    string `yaml:"upload_dir"`
 }
 
 type HTTPServer struct {

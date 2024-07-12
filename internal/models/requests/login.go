@@ -1,4 +1,4 @@
-package models
+package requests
 
 // LoginRequest swagger::model
 type LoginRequest struct {

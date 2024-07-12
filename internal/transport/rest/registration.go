@@ -7,19 +7,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/lunn06/smart-toy-backend/internal/database/sql"
 	"github.com/lunn06/smart-toy-backend/internal/models"
+	"github.com/lunn06/smart-toy-backend/internal/models/requests"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// @BasePath /
+// @BasePath /api/auth/
 
 // Registration godoc
-// @Summary registers a user
+// @Summary register user
 // @Schemes application/json
-// @Description accepts json sent by the user as input and registers it
-// @Tags registration
+// @Description accepts json with user info and registers him
+// @Tags authorization
 // @Accept json
 // @Produce json
-// @Param input body models.RegisterRequest true "account info"
+// @Param input body requests.RegisterRequest true "account info"
 // @Success 200 "message: Registration was successful"
 // @Failure 400 "error: Failed to read body"
 // @Failure 422 "error: Failed create email, because it exceeds the character limit or backwards"
@@ -29,7 +30,7 @@ import (
 // @Failure 409 "error: email or channel already been use"
 // @Router /api/auth/registration [post]
 func Registration(c *gin.Context) {
-	body := models.RegisterRequest{}
+	body := requests.RegisterRequest{}
 	if c.Bind(&body) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to read body",
@@ -60,7 +61,7 @@ func Registration(c *gin.Context) {
 		Password: string(hash),
 	}
 	err = sql.InsertUser(user)
-	slog.Error("Registration() error = %v, can't insert user", err)
+	slog.Error("Registration() can't InsertUser", "error", err)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{
 			"error": "email or channel already been use",

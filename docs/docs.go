@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "accepts json sent by the user as input and authorize it",
+                "description": "accepts json with user info and authorize him",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,7 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "authorization"
                 ],
-                "summary": "authenticates the user",
+                "summary": "login the user",
                 "parameters": [
                     {
                         "description": "account info",
@@ -35,13 +35,13 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.LoginRequest"
+                            "$ref": "#/definitions/requests.LoginRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "message: Authentication was successful"
+                        "description": "message: Login was successful"
                     },
                     "400": {
                         "description": "error: Invalid to insert token"
@@ -54,6 +54,43 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "error: Invalid to create token"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "delete": {
+                "description": "accepts json with refresh token and delete session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "authorization"
+                ],
+                "summary": "delete user session",
+                "parameters": [
+                    {
+                        "description": "refresh token",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.LogoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: Logout was successful"
+                    },
+                    "400": {
+                        "description": "error: Failed to read body"
+                    },
+                    "500": {
+                        "description": "error: Invalid to remove session"
                     }
                 }
             }
@@ -83,7 +120,7 @@ const docTemplate = `{
         },
         "/api/auth/refresh": {
             "post": {
-                "description": "accept json and refresh user refresh and access tokens",
+                "description": "accept json and refresh user tokens",
                 "consumes": [
                     "application/json"
                 ],
@@ -94,17 +131,6 @@ const docTemplate = `{
                     "authorization"
                 ],
                 "summary": "refresh user's tokens",
-                "parameters": [
-                    {
-                        "description": "account info",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.LoginRequest"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "message: RefreshTokens was successful"
@@ -120,7 +146,7 @@ const docTemplate = `{
         },
         "/api/auth/registration": {
             "post": {
-                "description": "accepts json sent by the user as input and registers it",
+                "description": "accepts json with user info and registers him",
                 "consumes": [
                     "application/json"
                 ],
@@ -128,9 +154,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "registration"
+                    "authorization"
                 ],
-                "summary": "registers a user",
+                "summary": "register user",
                 "parameters": [
                     {
                         "description": "account info",
@@ -138,7 +164,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.RegisterRequest"
+                            "$ref": "#/definitions/requests.RegisterRequest"
                         }
                     }
                 ],
@@ -160,10 +186,33 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/upload": {
+            "post": {
+                "description": "accepts file and upload it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "upload"
+                ],
+                "summary": "upload a JSON",
+                "responses": {
+                    "200": {
+                        "description": "message: Uploade was successful"
+                    },
+                    "400": {
+                        "description": "error: Only JSON file accepted"
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "models.LoginRequest": {
+        "requests.LoginRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -177,7 +226,15 @@ const docTemplate = `{
                 }
             }
         },
-        "models.RegisterRequest": {
+        "requests.LogoutRequest": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.RegisterRequest": {
             "type": "object",
             "properties": {
                 "email": {

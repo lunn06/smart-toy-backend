@@ -117,17 +117,8 @@ func InsertUser(user models.User) error {
 		return err
 	}
 
-	tx := DB.MustBegin()
-
-	_, err := tx.NamedExec(insertUserRequest, map[string]any{
-		"email":    user.Email,
-		"password": user.Password,
-	})
+	_, err := DB.Exec(insertUserRequest, user.Email, user.Password)
 	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return err
 	}
 

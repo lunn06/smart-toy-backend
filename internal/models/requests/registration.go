@@ -1,4 +1,4 @@
-package models
+package requests
 
 // RegisterRequest swagger::model
 type RegisterRequest struct {

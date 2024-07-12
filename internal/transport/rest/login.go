@@ -11,6 +11,7 @@ import (
 	"github.com/lunn06/smart-toy-backend/internal/database/redis"
 	"github.com/lunn06/smart-toy-backend/internal/database/sql"
 	"github.com/lunn06/smart-toy-backend/internal/models"
+	"github.com/lunn06/smart-toy-backend/internal/models/requests"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,17 +20,17 @@ const (
 	RefreshLife = time.Hour * 24 * 30
 )
 
-// @BasePath /auth/api/
+// @BasePath /api/auth/
 
-// Authentication godoc
-// @Summary authenticates the user
+// Login godoc
+// @Summary login the user
 // @Schemes application/json
-// @Description accepts json sent by the user as input and authorize it
+// @Description accepts json with user info and authorize him
 // @Tags authorization
 // @Accept json
 // @Produce json
-// @Param input body models.LoginRequest true "account info"
-// @Success 200 "message: Authentication was successful"
+// @Param input body requests.LoginRequest true "account info"
+// @Success 200 "message: Login was successful"
 // @Failure 400 "error: Failed to read body"
 // @Failure 422 "error: Email entered incorrectly, because it exceeds the character limit or backwards"
 // @Failure 422 "error: Invalid password size"
@@ -37,8 +38,8 @@ const (
 // @Failure 500 "error: Invalid to create token"
 // @Failure 400 "error: Invalid to insert token"
 // @Router /api/auth/login [post]
-func Authentication(c *gin.Context) {
-	body := models.LoginRequest{}
+func Login(c *gin.Context) {
+	body := requests.LoginRequest{}
 	if c.Bind(&body) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Failed to read body",
@@ -96,7 +97,10 @@ func Authentication(c *gin.Context) {
 		MaxAge:   int(RefreshLife.Seconds()),
 		Path:     "/api/auth",
 		HttpOnly: true,
+		Secure: true,
 	}
+
+	c.SetSameSite(http.SameSiteStrictMode)
 
 	c.SetCookie(
 		jwtCookie.Name,
@@ -115,12 +119,12 @@ func Authentication(c *gin.Context) {
 	})
 }
 
-func newTokens(school models.User) (string, error) {
+func newTokens(user models.User) (string, error) {
 	var jwtSecretKey = []byte(config.CFG.JWTSecretKey)
 
 	accessPayload := jwt.MapClaims{
-		"sub":   school.Id,
-		"email": school.Email,
+		"sub":   user.Id,
+		"email": user.Email,
 		"exp":   AccessLife,
 	}
 

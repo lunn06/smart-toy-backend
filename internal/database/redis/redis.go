@@ -69,3 +69,12 @@ func PopRefreshToken(tokenUuid string) (models.JwtToken, error) {
     }
     return token, nil
 }
+
+func DelRefreshToken(tokenUuid string) error {
+    _, err := rdb.Del(dragonflyCtx, tokenUuid).Result()
+
+    if err != nil {
+        return err
+    }
+    return nil
+}

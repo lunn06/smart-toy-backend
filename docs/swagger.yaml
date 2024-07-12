@@ -1,5 +1,5 @@
 definitions:
-  models.LoginRequest:
+  requests.LoginRequest:
     properties:
       email:
         type: string
@@ -8,7 +8,12 @@ definitions:
       password:
         type: string
     type: object
-  models.RegisterRequest:
+  requests.LogoutRequest:
+    properties:
+      refreshToken:
+        type: string
+    type: object
+  requests.RegisterRequest:
     properties:
       email:
         type: string
@@ -27,19 +32,19 @@ paths:
     post:
       consumes:
       - application/json
-      description: accepts json sent by the user as input and authorize it
+      description: accepts json with user info and authorize him
       parameters:
       - description: account info
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/models.LoginRequest'
+          $ref: '#/definitions/requests.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: 'message: Authentication was successful'
+          description: 'message: Login was successful'
         "400":
           description: 'error: Invalid to insert token'
         "403":
@@ -48,7 +53,31 @@ paths:
           description: 'error: Invalid password size'
         "500":
           description: 'error: Invalid to create token'
-      summary: authenticates the user
+      summary: login the user
+      tags:
+      - authorization
+  /api/auth/logout:
+    delete:
+      consumes:
+      - application/json
+      description: accepts json with refresh token and delete session
+      parameters:
+      - description: refresh token
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Logout was successful'
+        "400":
+          description: 'error: Failed to read body'
+        "500":
+          description: 'error: Invalid to remove session'
+      summary: delete user session
       tags:
       - authorization
   /api/auth/ping:
@@ -70,14 +99,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: accept json and refresh user refresh and access tokens
-      parameters:
-      - description: account info
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.LoginRequest'
+      description: accept json and refresh user tokens
       produces:
       - application/json
       responses:
@@ -94,14 +116,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: accepts json sent by the user as input and registers it
+      description: accepts json with user info and registers him
       parameters:
       - description: account info
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/models.RegisterRequest'
+          $ref: '#/definitions/requests.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -116,7 +138,22 @@ paths:
             limit or backwards'
         "500":
           description: 'error: Failed to hash password. Please, try again later'
-      summary: registers a user
+      summary: register user
       tags:
-      - registration
+      - authorization
+  /api/upload:
+    post:
+      consumes:
+      - application/json
+      description: accepts file and upload it
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Uploade was successful'
+        "400":
+          description: 'error: Only JSON file accepted'
+      summary: upload a JSON
+      tags:
+      - upload
 swagger: "2.0"
