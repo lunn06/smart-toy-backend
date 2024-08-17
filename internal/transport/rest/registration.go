@@ -21,6 +21,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param input body requests.RegisterRequest true "account info"
+// @Param output body requests.RegisterResponse true "response info"
 // @Success 200 "message: Registration was successful"
 // @Failure 400 "error: Failed to read body"
 // @Failure 422 "error: Failed create email, because it exceeds the character limit or backwards"
@@ -32,27 +33,27 @@ import (
 func Registration(c *gin.Context) {
 	body := requests.RegisterRequest{}
 	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read body",
+		c.JSON(http.StatusBadRequest, requests.RegisterResponse{
+			Error: "Failed to read body",
 		})
 		return
 	}
 	if len(body.Email) > 255 || body.Email == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "Failed create email, because it exceeds the character limit or backwards",
+		c.JSON(http.StatusUnprocessableEntity, requests.RegisterResponse{
+			Error: "Failed create email, because it exceeds the character limit or backwards",
 		})
 		return
 	}
 	if len(body.Password) > 72 || body.Password == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "Failed create password, because it exceeds the character limit or backwards",
+		c.JSON(http.StatusUnprocessableEntity, requests.RegisterResponse{
+			Error: "Failed create password, because it exceeds the character limit or backwards",
 		})
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), 10)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Error on the server. Please, try again later",
+		c.JSON(http.StatusInternalServerError, requests.RegisterResponse{
+			Error: "Error on the server. Please, try again later",
 		})
 		return
 	}
@@ -63,8 +64,8 @@ func Registration(c *gin.Context) {
 	err = sql.InsertUser(user)
 	slog.Error("Registration() can't InsertUser", "error", err)
 	if err != nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": "email or channel already been use",
+		c.JSON(http.StatusConflict, requests.RegisterResponse{
+			Error: "email or channel already been use",
 		})
 		return
 	}
@@ -103,8 +104,8 @@ func Registration(c *gin.Context) {
 	// 	jwtCookie.HttpOnly,
 	// )
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Registration was successful",
+	c.JSON(http.StatusOK, requests.RegisterResponse{
+		Message: "Registration was successful",
 		// "accessToken":  accessToken,
 		// "refreshToken": refreshUUID,
 	})
