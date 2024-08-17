@@ -6,3 +6,11 @@ type LoginRequest struct {
 	Password            string `json:"password"`
 	SmartToyFingerPrint string `json:"fingerprint"`
 }
+
+// LoginResponse swagger::model
+type LoginResponse struct {
+	Message      string `json:"message"`
+	Error        string `json:"error"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}

@@ -1,3 +1,9 @@
 configs/main.yaml
 
-.vscode/**
+.vscode
+
+.air.toml
+
+upload/**
+
+tmp

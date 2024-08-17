@@ -10,11 +10,12 @@ import (
 var CFG Config
 
 type Config struct {
-	HTTPServer   `yaml:"http_server"`
-	Database     `yaml:"database"`
-	Redis        `yaml:"redis"`
-	JWTSecretKey string `yaml:"jwt_secret_key"`
-	UploadDir    string `yaml:"upload_dir"`
+	HTTPServer `yaml:"http_server"`
+	Database   `yaml:"database"`
+	Redis      `yaml:"redis"`
+	JWT        `yaml:"jwt"`
+	SmartToy   `yaml:"smart_toy"`
+	UploadDir  string `yaml:"upload_dir"`
 }
 
 type HTTPServer struct {
@@ -35,6 +36,16 @@ type Redis struct {
 	Address  string `yaml:"address"`
 	Password string `yaml:"password"`
 	Database int    `yaml:"database"`
+}
+
+type JWT struct {
+	AccessLife   int    `yaml:"access_life"`
+	RefreshLife  int    `yaml:"refresh_life"`
+	JWTSecretKey string `yaml:"jwt_secret_key"`
+}
+
+type SmartToy struct {
+	MaxCount int `yaml:"max_count"`
 }
 
 func Init() {

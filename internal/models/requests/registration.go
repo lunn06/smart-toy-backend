@@ -6,3 +6,9 @@ type RegisterRequest struct {
 	Password            string `json:"password"`
 	SmartToyFingerPrint string `json:"fingerprint"`
 }
+
+// RegisterRequest swagger::model
+type RegisterResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+}

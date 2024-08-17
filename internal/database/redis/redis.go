@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -28,16 +29,50 @@ func InsertRefreshToken(userId int, fingerprint string, tokenLife time.Duration)
 	if err != nil {
 		return "", err
 	}
-    tokenUuid := tokenUuidStruct.String()
+	tokenUuid := tokenUuidStruct.String()
 
-    jwtToken := models.JwtToken {
-        UserId: userId,
-        FingerPrint: fingerprint,
-        CreationTime: time.Now(),
-    }
+	jwtToken := models.JwtToken{
+		UserId:       userId,
+		FingerPrint:  fingerprint,
+		CreationTime: time.Now(),
+	}
 
 	_, err = rdb.Set(dragonflyCtx, tokenUuid, jwtToken, tokenLife).Result()
 	if err != nil {
+		return "", err
+	}
+
+	userIdStr := strconv.Itoa(userId)
+
+	sessionsCount, err := rdb.SCard(dragonflyCtx, userIdStr).Result()
+	if err != nil {
+		return "", err
+	}
+
+	if int(sessionsCount) < config.CFG.SmartToy.MaxCount {
+		_, err = rdb.SAdd(dragonflyCtx, userIdStr, tokenUuid).Result()
+		if err != nil {
+			return "", err
+		}
+		return tokenUuid, nil
+	}
+
+	sessions, err := rdb.SMembers(dragonflyCtx, userIdStr).Result()
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := rdb.Del(dragonflyCtx, sessions...).Result(); err != nil {
+		return "", err
+	}
+	if _, err := rdb.SPopN(
+		dragonflyCtx,
+		userIdStr,
+		int64(config.CFG.SmartToy.MaxCount),
+	).Result(); err != nil {
+		return "", err
+	}
+	if _, err = rdb.SAdd(dragonflyCtx, userIdStr, tokenUuid).Result(); err != nil {
 		return "", err
 	}
 
@@ -45,36 +80,33 @@ func InsertRefreshToken(userId int, fingerprint string, tokenLife time.Duration)
 }
 
 func GetRefreshToken(tokenUuid string) (models.JwtToken, error) {
-    var token models.JwtToken
+	var token models.JwtToken
 
-    err := rdb.Get(dragonflyCtx, tokenUuid).Scan(&token)
-    if err != nil {
-        return token, err
-    }
+	err := rdb.Get(dragonflyCtx, tokenUuid).Scan(&token)
+	if err != nil {
+		return models.JwtToken{}, err
+	}
 
-    return token, nil
+	return token, nil
 }
 
 func PopRefreshToken(tokenUuid string) (models.JwtToken, error) {
-    token, err := GetRefreshToken(tokenUuid)
+	token, err := GetRefreshToken(tokenUuid)
+	if err != nil {
+		return token, err
+	}
 
-    if err != nil {
-        return token, err
-    }
+	if _, err := rdb.Del(dragonflyCtx, tokenUuid).Result(); err != nil {
+		return models.JwtToken{}, err
+	}
 
-    _, err = rdb.Del(dragonflyCtx, tokenUuid).Result()
+	if _, err = rdb.SRem(
+		dragonflyCtx,
+		strconv.Itoa(token.UserId),
+		tokenUuid,
+	).Result(); err != nil {
+		return models.JwtToken{}, err
+	}
 
-    if err != nil {
-        return token, err
-    }
-    return token, nil
-}
-
-func DelRefreshToken(tokenUuid string) error {
-    _, err := rdb.Del(dragonflyCtx, tokenUuid).Result()
-
-    if err != nil {
-        return err
-    }
-    return nil
+	return token, nil
 }

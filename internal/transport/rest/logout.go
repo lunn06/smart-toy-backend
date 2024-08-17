@@ -18,7 +18,8 @@ import (
 // @Tags authorization
 // @Accept json
 // @Produce json
-// @Param input body requests.LogoutRequest true "refresh token"
+// @Param input body requests.LogoutRequest true "session info"
+// @Param output body requests.LogoutResponse true "response info"
 // @Success 200 "message: Logout was successful"
 // @Failure 400 "error: Failed to read body"
 // @Failure 500 "error: Invalid to remove session"
@@ -27,23 +28,23 @@ func Logout(c *gin.Context) {
 	body := requests.LogoutRequest{}
 	if err := c.Bind(&body); err != nil {
 		slog.Error("Logout() can't PopRefreshToken", "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read body",
+		c.JSON(http.StatusBadRequest, requests.LogoutResponse{
+			Error: "Failed to read body",
 		})
 		return
 	}
 
-	err := redis.DelRefreshToken(body.RefreshToken)
+	_, err := redis.PopRefreshToken(body.RefreshToken)
 
 	if err != nil {
 		slog.Error("Logout() can't PopRefreshToken", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Invalid to remove session",
+		c.JSON(http.StatusInternalServerError, requests.LogoutResponse{
+			Error: "Invalid to remove session",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout was successful",
+	c.JSON(http.StatusOK, requests.LogoutResponse{
+		Message: "Logout was successful",
 	})
 }
