@@ -37,6 +37,15 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/requests.LoginRequest"
                         }
+                    },
+                    {
+                        "description": "session info",
+                        "name": "output",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.LoginResponse"
+                        }
                     }
                 ],
                 "responses": {
@@ -73,12 +82,21 @@ const docTemplate = `{
                 "summary": "delete user session",
                 "parameters": [
                     {
-                        "description": "refresh token",
+                        "description": "session info",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/requests.LogoutRequest"
+                        }
+                    },
+                    {
+                        "description": "response info",
+                        "name": "output",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.LogoutResponse"
                         }
                     }
                 ],
@@ -131,6 +149,26 @@ const docTemplate = `{
                     "authorization"
                 ],
                 "summary": "refresh user's tokens",
+                "parameters": [
+                    {
+                        "description": "session info",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.RefreshTokensRequest"
+                        }
+                    },
+                    {
+                        "description": "response info",
+                        "name": "output",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.RefreshTokensResponse"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "message: RefreshTokens was successful"
@@ -165,6 +203,15 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/requests.RegisterRequest"
+                        }
+                    },
+                    {
+                        "description": "response info",
+                        "name": "output",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.RegisterResponse"
                         }
                     }
                 ],
@@ -226,9 +273,65 @@ const docTemplate = `{
                 }
             }
         },
+        "requests.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
         "requests.LogoutRequest": {
             "type": "object",
             "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.LogoutResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.RefreshTokensRequest": {
+            "type": "object",
+            "properties": {
+                "fingerprint": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.RefreshTokensResponse": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
                 "refreshToken": {
                     "type": "string"
                 }
@@ -244,6 +347,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 }
             }

@@ -15,9 +15,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	AccessLife  = time.Minute * 30
-	RefreshLife = time.Hour * 24 * 30
+var (
+	AccessLife  = time.Duration(int64(time.Minute) * int64(config.CFG.AccessLife))
+	RefreshLife = time.Duration(int64(time.Minute) * int64(config.CFG.RefreshLife))
 )
 
 // @BasePath /api/auth/
@@ -30,6 +30,7 @@ const (
 // @Accept json
 // @Produce json
 // @Param input body requests.LoginRequest true "account info"
+// @Param output body requests.LoginResponse true "session info"
 // @Success 200 "message: Login was successful"
 // @Failure 400 "error: Failed to read body"
 // @Failure 422 "error: Email entered incorrectly, because it exceeds the character limit or backwards"
@@ -40,82 +41,89 @@ const (
 // @Router /api/auth/login [post]
 func Login(c *gin.Context) {
 	body := requests.LoginRequest{}
-	if c.Bind(&body) != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Failed to read body",
+	if err := c.Bind(&body); err != nil {
+		slog.Error("Login() can't read request body", "error", err)
+		c.JSON(http.StatusBadRequest, requests.LoginResponse{
+			Error: "Failed to read body",
 		})
 		return
 	}
 	if len(body.Email) > 255 || body.Email == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "Email entered incorrectly, because it exceeds the character limit or backwards",
+		slog.Error("Login() invalid email")
+		c.JSON(http.StatusUnprocessableEntity, requests.LoginResponse{
+			Error: "Email entered incorrectly, because it exceeds the character limit or backwards",
 		})
 		return
 	}
 	if len(body.Password) > 72 || body.Password == "" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": "Invalid password size",
+		slog.Error("Login() invalid password")
+		c.JSON(http.StatusUnprocessableEntity, requests.LoginResponse{
+			Error: "Invalid password size",
 		})
 		return
 	}
+
 	user, err := sql.GetUserByEmail(body.Email)
 	if err != nil {
 		slog.Error("Authentication() can't GetUserByEmail()", "error", err)
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Invalid email or password",
+		c.JSON(http.StatusForbidden, requests.LoginResponse{
+			Error: "Invalid email or password",
 		})
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Invalid email or password",
+		slog.Error("Login() uncompared password", "error", err)
+		c.JSON(http.StatusForbidden, requests.LoginResponse{
+			Error: "Invalid email or password",
 		})
 		return
 	}
 
 	accessToken, err := newTokens(user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Invalid to create token",
+		slog.Error("newTokens() can't generate new tokens", "error", err)
+		c.JSON(http.StatusInternalServerError, requests.LoginResponse{
+			Error: "Invalid to create token",
 		})
 		return
 	}
 
 	refreshUuid, err := redis.InsertRefreshToken(user.Id, body.SmartToyFingerPrint, RefreshLife)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid to insert token",
+		slog.Error("Login() can't insert tokens in redis", "error", err)
+		c.JSON(http.StatusBadRequest, requests.LoginResponse{
+			Error: "Invalid to insert token",
 		})
 		return
 	}
 
-	jwtCookie := http.Cookie{
-		Name:     "refreshToken",
-		Domain:   config.CFG.HTTPServer.Address,
-		Value:    refreshUuid,
-		MaxAge:   int(RefreshLife.Seconds()),
-		Path:     "/api/auth",
-		HttpOnly: true,
-		Secure: true,
-	}
+	// jwtCookie := http.Cookie{
+	// 	Name:     "refreshToken",
+	// 	Domain:   config.CFG.HTTPServer.Address,
+	// 	Value:    refreshUuid,
+	// 	MaxAge:   int(RefreshLife.Seconds()),
+	// 	Path:     "/api/auth",
+	// 	HttpOnly: true,
+	// 	Secure:   true,
+	// }
 
-	c.SetSameSite(http.SameSiteStrictMode)
+	// c.SetSameSite(http.SameSiteStrictMode)
 
-	c.SetCookie(
-		jwtCookie.Name,
-		jwtCookie.Value,
-		jwtCookie.MaxAge,
-		jwtCookie.Path,
-		jwtCookie.Domain,
-		jwtCookie.Secure,
-		jwtCookie.HttpOnly,
-	)
+	// c.SetCookie(
+	// 	jwtCookie.Name,
+	// 	jwtCookie.Value,
+	// 	jwtCookie.MaxAge,
+	// 	jwtCookie.Path,
+	// 	jwtCookie.Domain,
+	// 	jwtCookie.Secure,
+	// 	jwtCookie.HttpOnly,
+	// )
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":      "Authentication was successful",
-		"accessToken":  accessToken,
-		"refreshToken": refreshUuid,
+	c.JSON(http.StatusOK, requests.LoginResponse{
+		Message:      "Authentication was successful",
+		AccessToken:  accessToken,
+		RefreshToken: refreshUuid,
 	})
 }
 

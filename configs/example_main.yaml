@@ -1,10 +1,26 @@
 http_server:
-  address: "127.0.0.1"
-  post: "80"
+  address: "localhost"
+  port: "80"
+
 database:
-  address: "pgsql.com:5432"
-  user: "db_user"
-  name: "db_name"
-  password: "db_password"
-  ssl_mode: "disable"
-jwt_secret_key: "test"
+  driver: "mysql"
+  address: ""
+  user: "root"
+  name: "smart-toy-db"
+  password: "password"
+  ssl_mode: "enbled"
+
+redis:
+  address: "localhost:6379"
+  password: ""
+  database: 0
+
+jwt:
+  access_life: 1
+  refresh_life: 1
+  jwt_secret_key: "no-secret"
+
+upload_dir: "/path/to/upload/dir"
+
+smart_toy:
+  max_count: 100
